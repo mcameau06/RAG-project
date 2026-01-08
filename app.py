@@ -74,12 +74,12 @@ def get_answer(query, model, similar_docs):
     combined_input = f"""based on the following documents, please answer this question: {query} 
     Documents: {chr(10).join([f"-{doc.page_content}" for doc in similar_docs])}
     
-    Please answer like an academic researcher, and only answer with the information in the documents.
-    If the query cannot be answered with the relevant documents, tell the user politely you dont know.
+    Please answer like an researcher, and only answer with the information in the documents.
+    If the query cannot be answered with the relevant documents, tell the user you don't know.
      """
 
     messages = [
-        SystemMessage(content="Your an researchers assistant"),
+        SystemMessage(content="Your a researchers assistant"),
         HumanMessage(content= combined_input)
     ]
     results = model.invoke(messages)
@@ -88,20 +88,6 @@ def get_answer(query, model, similar_docs):
 
     print(results.content)
         
-
-    
-
-
-
-
-# retrieve the info
-
-
-"""
-1. Load documents
-2.split the documents
-3.store the documents as embeddings with the vector store
-"""
 
 def main():
    embedding_model = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
