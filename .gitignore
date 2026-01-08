@@ -1,0 +1,6 @@
+
+.env
+paper.pdf
+chroma_langchain_db
+venv/
+__pycache__/
