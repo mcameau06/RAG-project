@@ -8,8 +8,12 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.tools import tool
 from langchain.agents import create_agent
+import streamlit as st
 load_dotenv()
 
+
+
+    
 
 def ingest_documents(file_path:str):
     if not os.path.exists(file_path):
@@ -44,6 +48,8 @@ def create_vector_db(chunks, embedding_model,persist_directory="./chroma_langcha
     persist_directory=persist_directory,
     collection_metadata={"hnsw:space":"cosine"}
     )
+    
+
     document_ids = vector_store.add_documents(documents=chunks)
 
     print(f"Added {len(document_ids)} documents to vector store")
@@ -98,10 +104,8 @@ def main():
    vectorstore = create_vector_db(chunks,embedding_model)
    query = "How do you create the transformer? Explain to me like I'm a highschooler"
    relevant_docs = retrieve_relevant_docs(embedding_model,query)
-   query_2 = "Can dogs fly?"
-
    get_answer(query,model,relevant_docs)
-   get_answer(query_2,model,relevant_docs)
+   
 if __name__ == "__main__":
     main()
 
