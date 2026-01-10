@@ -13,7 +13,16 @@ load_dotenv()
 
 
 
-    
+
+def load_model(model_name="google_genai:gemini-2.5-flash-lite"):
+    model = init_chat_model(model=model_name)
+
+    return model
+
+def load_embedding_model(model_name="models/gemini-embedding-001"):
+    embedding_model = GoogleGenerativeAIEmbeddings(model=model_name)
+
+    return embedding_model
 
 def ingest_documents(file_path:str):
     if not os.path.exists(file_path):
@@ -93,14 +102,15 @@ def get_answer(query, model, similar_docs):
     print("\n __AI Response__")
 
     print(results.content)
-        
+    return results.content
 
 def main():
-   embedding_model = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
-   model = init_chat_model("google_genai:gemini-2.5-flash-lite")
+  
+   model = load_model()
+   embedding_model = load_embedding_model()
+
    documents =  ingest_documents("paper.pdf")
    chunks  = chunk_documents(documents)
-
    vectorstore = create_vector_db(chunks,embedding_model)
    query = "How do you create the transformer? Explain to me like I'm a highschooler"
    relevant_docs = retrieve_relevant_docs(embedding_model,query)
