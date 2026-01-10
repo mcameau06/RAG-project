@@ -1,5 +1,5 @@
 import streamlit as st
-from app import ingest_documents, load_model,load_embedding_model, create_vector_db,chunk_documents,retrieve_relevant_docs,get_answer
+from app import ingest_documents, load_model,load_embedding_model, create_vector_db,chunk_documents,retrieve_relevant_docs,get_answer,delete_vector_db
 from tempfile import NamedTemporaryFile
 st.write("Hello There 😎")
 
@@ -17,32 +17,38 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
 
-
 if uploaded_file:
-    with NamedTemporaryFile(delete=False,suffix="pdf") as temp:
-        temp.write(uploaded_file.getvalue())
-        pdf_path = temp.name
-        if "paper_name" not in st.session_state:
-            st.session_state["paper_name"] = uploaded_file.name
-
-    try:
-
-        paper = ingest_documents(pdf_path)
-
-        chunks = chunk_documents(paper)
-        if "vector_store" not in st.session_state:
-                st.session_state["vector_store"] = create_vector_db(chunks,st.session_state["embedding_model"])
-                st.success("processed successfully")
+    if "paper_name" not in st.session_state or st.session_state["paper_name"] != uploaded_file.name:
+        # clear messages
+        st.session_state.messages = []
         
-    except Exception as e:
-        st.write(e)
+
+        if "vector_store" in st.session_state:
+            delete_vector_db(st.session_state["vector_store"])
+            del st.session_state["vector_store"]
+            
+        with NamedTemporaryFile(delete=False,suffix="pdf") as temp:
+            temp.write(uploaded_file.getvalue())
+            pdf_path = temp.name
+            
+        try:
+
+            paper = ingest_documents(pdf_path)
+
+            chunks = chunk_documents(paper)
+            
+            st.session_state["vector_store"] = create_vector_db(chunks,st.session_state["embedding_model"])
+            st.session_state["paper_name"] = uploaded_file.name
+            st.success("processed successfully")
+            
+        except Exception as e:
+            st.write(e)
 
 prompt = st.chat_input("Say something")
 if prompt:
     
     try: 
-        relevant_docs = retrieve_relevant_docs(st.session_state["embedding_model"],prompt)
-        response = get_answer(prompt,st.session_state["model"],relevant_docs)
+        relevant_docs = retrieve_relevant_docs(st.session_state["embedding_model"],prompt,st.session_state["vector_store"])
 
         with st.chat_message("user"):
             st.markdown(prompt)

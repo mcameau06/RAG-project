@@ -50,7 +50,7 @@ def chunk_documents(documents):
     return all_splits
 
 def create_vector_db(chunks, embedding_model,persist_directory="./chroma_langchain_db"):
-    
+
     vector_store = Chroma(
     collection_name="example_collection",
     embedding_function=embedding_model,
@@ -65,18 +65,19 @@ def create_vector_db(chunks, embedding_model,persist_directory="./chroma_langcha
     print(document_ids[:3])
 
     return vector_store
+def delete_vector_db(vector_store):
+    try:
+       
+        vector_store.delete_collection()
+        return True
+    except Exception as e:
+        print(f"Error deleting vector store: {e}")
+        return False
 
-
-def retrieve_relevant_docs(embedding_model,query, persist_directory="./chroma_langchain_db"):
+def retrieve_relevant_docs(embedding_model,query, vector_store, persist_directory="./chroma_langchain_db"):
     
-    db = Chroma(
-        collection_name="example_collection",
-        embedding_function=embedding_model,
-        persist_directory=persist_directory,
-        collection_metadata={"hnsw:space":"cosine"}
-    )
 
-    retriever = db.as_retriever(search_type="similarity_score_threshold", search_kwargs={"k":4,"score_threshold":0.3})
+    retriever = vector_store.as_retriever(search_type="similarity_score_threshold", search_kwargs={"k":4,"score_threshold":0.3})
 
     similar_docs = retriever.invoke(query)
     print("__Context__")
@@ -104,20 +105,6 @@ def get_answer(query, model, similar_docs):
     print(results.content)
     return results.content
 
-def main():
-  
-   model = load_model()
-   embedding_model = load_embedding_model()
-
-   documents =  ingest_documents("paper.pdf")
-   chunks  = chunk_documents(documents)
-   vectorstore = create_vector_db(chunks,embedding_model)
-   query = "How do you create the transformer? Explain to me like I'm a highschooler"
-   relevant_docs = retrieve_relevant_docs(embedding_model,query)
-   get_answer(query,model,relevant_docs)
-   
-if __name__ == "__main__":
-    main()
 
 
 
