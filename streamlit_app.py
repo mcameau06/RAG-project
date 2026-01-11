@@ -1,5 +1,6 @@
 import streamlit as st
-from app import ingest_documents, load_model,load_embedding_model, create_vector_db,chunk_documents,retrieve_relevant_docs,get_answer,delete_vector_db
+from app import (ingest_documents, load_model,load_embedding_model, create_vector_db,
+chunk_documents,retrieve_relevant_docs,get_answer,delete_vector_db,reformulate_query)
 from tempfile import NamedTemporaryFile
 st.write("Hello There 😎")
 
@@ -15,6 +16,9 @@ if "messages" not in st.session_state:
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
+st.write(st.session_state)
+
+
 
 
 if uploaded_file:
@@ -38,29 +42,32 @@ if uploaded_file:
             chunks = chunk_documents(paper)
             
             st.session_state["vector_store"] = create_vector_db(chunks,st.session_state["embedding_model"])
+            
             st.session_state["paper_name"] = uploaded_file.name
             st.success("processed successfully")
             
         except Exception as e:
             st.write(e)
 
-prompt = st.chat_input("Say something")
-if prompt:
-    
-    try: 
-        relevant_docs = retrieve_relevant_docs(st.session_state["embedding_model"],prompt,st.session_state["vector_store"])
 
-        with st.chat_message("user"):
-            st.markdown(prompt)
-        st.session_state.messages.append({"role":"user","content":prompt})
+    prompt = st.chat_input("Say something")
+    if prompt:
+        query= reformulate_query(st.session_state["messages"],prompt,st.session_state["model"])
+        try: 
+                
+            relevant_docs = retrieve_relevant_docs(query,st.session_state["vector_store"])
 
-        response = get_answer(prompt,st.session_state["model"],relevant_docs)
-        with st.chat_message("assistant"):
-            st.markdown(response)
-        st.session_state.messages.append({"role":"assistant","content":response})
+            with st.chat_message("user"):
+                st.markdown(prompt)
+            st.session_state.messages.append({"role":"user","content":prompt})
 
-    except Exception as e:
-        st.error(e)
+            response = get_answer(prompt,st.session_state["model"],relevant_docs)
+            with st.chat_message("ai"):
+                st.markdown(response)
+            st.session_state.messages.append({"role":"ai","content":response})
+
+        except Exception as e:
+            st.error(e)
 
 
    
