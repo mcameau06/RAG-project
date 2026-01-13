@@ -14,7 +14,7 @@ import streamlit as st
 import os
 
 
-@st.cache_resource
+#@st.cache_resource
 def load_model(model_name="gemini-2.5-flash-lite"):
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
@@ -26,7 +26,7 @@ def load_model(model_name="gemini-2.5-flash-lite"):
            )
     return model
 
-@st.cache_resource
+#@st.cache_resource
 def load_embedding_model(model_name="models/gemini-embedding-001"):
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
