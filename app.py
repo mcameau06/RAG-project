@@ -1,19 +1,17 @@
-from ast import List
-import os
+from chromadb.api.types import Document
 from langchain.chat_models import init_chat_model
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage, SystemMessage,AIMessage
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
+#from langchain_ollama import OllamaEmbeddings,ChatOllama
 from langchain_chroma import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.prompts import ChatPromptTemplate,MessagesPlaceholder
-from numpy import histogram
+from langchain_community.document_loaders import ArxivLoader
+from tempfile import NamedTemporaryFile
 import streamlit as st
-
 load_dotenv()
-
-
 
 @st.cache_resource
 def load_model(model_name="google_genai:gemini-2.5-flash-lite"):
@@ -23,23 +21,48 @@ def load_model(model_name="google_genai:gemini-2.5-flash-lite"):
 
 @st.cache_resource
 def load_embedding_model(model_name="models/gemini-embedding-001"):
+
     embedding_model = GoogleGenerativeAIEmbeddings(model=model_name)
 
     return embedding_model
 
-def ingest_documents(file_path:str):
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"File not found {file_path}")
-    # load pdf
-    loader = PyPDFLoader(file_path)
-    docs = loader.load()
 
-    if not docs:
-        raise FileNotFoundError("No documents loaded")
     
-    return docs
+def ingest_arxiv_file(arxiv_id:str) -> Document:
+    loader = ArxivLoader(
+    query=arxiv_id,
+    load_max_docs=1,
+    )
+    document = loader.load()
+    if not document:
+        raise FileNotFoundError("No documents loaded")
+    return (document,document[0].metadata["Title"])
 
+def ingest_uploaded_file(uploaded_file):
 
+    with NamedTemporaryFile(delete=False,suffix="pdf") as temp:
+                temp.write(uploaded_file.getvalue())
+                pdf_path = temp.name
+
+    loader = PyPDFLoader(pdf_path)
+    document = loader.load()
+    if not document:
+        raise FileNotFoundError("No documents loaded")
+    return (document,uploaded_file.name)
+
+def ingest_documents(source_type:str, source_identifier:str):
+    
+    if source_type == "uploaded_file":
+        document,paper_name = ingest_uploaded_file(source_identifier)
+        chunks = chunk_documents(document)
+        return (chunks, paper_name)
+    elif source_type == "arxiv_id":
+        document,paper_name = ingest_arxiv_file(source_identifier)
+        chunks = chunk_documents(document)
+        return (chunks,paper_name)
+    else:
+        raise ValueError("Unknown source type")
+   
 def chunk_documents(documents):
 
     text_splitter = RecursiveCharacterTextSplitter(
@@ -53,10 +76,10 @@ def chunk_documents(documents):
 
     return all_splits
 
-def create_vector_db(chunks, embedding_model,persist_directory="./chroma_langchain_db"):
+def create_vector_db(collection_name,chunks, embedding_model,persist_directory="./chroma_langchain_db"):
 
     vector_store = Chroma(
-    collection_name="example_collection",
+    collection_name=collection_name,
     embedding_function=embedding_model,
     collection_metadata={"hnsw:space":"cosine"}
     )
@@ -116,6 +139,7 @@ just reformulate it if needed and otherwise return it as is."""
     results = model.invoke(formatted_messages)
 
     return results.content
+    
 
 def get_conversation_history(chat:list) -> list[HumanMessage | AIMessage]:
     conversation_history = []
@@ -128,10 +152,7 @@ def get_conversation_history(chat:list) -> list[HumanMessage | AIMessage]:
 
     return conversation_history
 
-
-
 def get_answer(query, model, similar_docs):
-
 
     combined_input = f"""based on the following documents, please answer this question: {query} 
     Documents: {chr(10).join([f"-{doc.page_content}" for doc in similar_docs])}
@@ -149,6 +170,7 @@ def get_answer(query, model, similar_docs):
 
     print(results.content)
     return results.content
+    
 
 
 
