@@ -1,44 +1,60 @@
-import tempfile
 import streamlit as st
 from app import (ingest_documents, load_model,load_embedding_model, create_vector_db,
-chunk_documents,retrieve_relevant_docs,get_answer,delete_vector_db,reformulate_query)
-from tempfile import NamedTemporaryFile
+retrieve_relevant_docs,get_answer,delete_vector_db,reformulate_query)
+
 
 
 if "model" not in st.session_state:
     st.session_state["model"] = load_model()
 if "embedding_model" not in st.session_state:
     st.session_state["embedding_model"] = load_embedding_model()
-
+if "paper_id" not in st.session_state:
+    st.session_state["paper_id"] = None
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+def reset_document():
+    for key in ["vector_store", "paper_id", "paper_name", "messages"]:
+        if key in st.session_state:
+            del st.session_state[key]
+    
+
+st.header("Research GPT", text_alignment="center",width="stretch",divider="gray")
+st.sidebar.subheader("Chat with your favorite or most confusing research papers!",divider="gray")
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-st.write("Hello There 😎")
 
-uploaded_file = st.file_uploader("Enter a file","pdf")
+uploaded_file = None
+arxiv_id = None
 
-arxiv_id  = st.text_input("Enter the arxiv id for your paper")
+if "vector_store" not in st.session_state:
+    with st.chat_message("ai"):
+        st.markdown("Please enter an ArXiv ID or upload a document to get started.")
+    arxiv_id = st.sidebar.text_input("You can enter the Arxiv id for your paper")
+    uploaded_file =  st.sidebar.file_uploader("Or insert a file","pdf")
+    
+else:
+     st.sidebar.button("New Paper/New Chat",on_click=reset_document)
 
-if not uploaded_file and not arxiv_id:
-    st.write("Please upload a file so we can chat")
-
-current_name = uploaded_file.name if uploaded_file else None
+    
 
 if uploaded_file:
     source_type = "uploaded_file"
     source_identifier = uploaded_file
-    current_name = uploaded_file.name
+    st.session_state["paper_id"] = uploaded_file.name
+    paper_id = uploaded_file.name
 elif arxiv_id:
     source_type = "arxiv_id"
     source_identifier = arxiv_id
-    current_name = arxiv_id
+    paper_id = arxiv_id
+
+
+
 
 if uploaded_file or arxiv_id:
-    if "paper_name" not in st.session_state or st.session_state["paper_name"] != current_name:
+    if "paper_name" not in st.session_state or st.session_state["paper_id"] != paper_id:
         # clear messages
         st.session_state.messages = []
         
@@ -50,16 +66,17 @@ if uploaded_file or arxiv_id:
             with st.spinner("Processing Documents"):
 
                 chunks,paper_name = ingest_documents(source_type,source_identifier)
-                st.session_state["vector_store"] = create_vector_db(chunks,st.session_state["embedding_model"])
-                
                 st.session_state["paper_name"] = paper_name
-                st.success("processed successfully")
-            
+                st.session_state["paper_id"] = paper_id
+                st.session_state["vector_store"] = create_vector_db(st.session_state["paper_id"],chunks,st.session_state["embedding_model"])
                 
+                st.success("processed successfully")
+                 
         except Exception as e:
             st.write(f"Error while processing document {e}")
             st.stop()
 if "vector_store" in st.session_state:
+   
     prompt = st.chat_input("Say something")
     if prompt:
         query= reformulate_query(st.session_state["messages"],prompt,st.session_state["model"])
@@ -79,6 +96,9 @@ if "vector_store" in st.session_state:
         except Exception as e:
             st.error(e)
 
+
+
+
 if "paper_name" in st.session_state:
-    st.info(f"📄 Current paper: {st.session_state['paper_name']}")
-   
+    st.sidebar.info(f"📄 Current paper: {st.session_state['paper_name']}")
+
