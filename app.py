@@ -16,9 +16,10 @@ import os
 
 @st.cache_resource
 def load_model(model_name="gemini-2.5-flash-lite"):
+    api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
         raise RuntimeError("GOOGLE_API_KEY not found in environment")
-    api_key = os.getenv("GOOGLE_API_KEY")
+    
     model = ChatGoogleGenerativeAI(
         model=model_name,
         google_api_key=api_key
@@ -27,9 +28,9 @@ def load_model(model_name="gemini-2.5-flash-lite"):
 
 @st.cache_resource
 def load_embedding_model(model_name="models/gemini-embedding-001"):
+    api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
         raise RuntimeError("GOOGLE_API_KEY not found in environment")
-    api_key = os.getenv("GOOGLE_API_KEY")
     embedding_model = GoogleGenerativeAIEmbeddings(model=model_name,google_api_key=api_key)
 
     return embedding_model
