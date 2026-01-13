@@ -2,7 +2,7 @@ from chromadb.api.types import Document
 from langchain.chat_models import init_chat_model
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage, SystemMessage,AIMessage
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings,ChatGoogleGenerativeAI
 #from langchain_ollama import OllamaEmbeddings,ChatOllama
 from langchain_chroma import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -11,18 +11,22 @@ from langchain_core.prompts import ChatPromptTemplate,MessagesPlaceholder
 from langchain_community.document_loaders import ArxivLoader
 from tempfile import NamedTemporaryFile
 import streamlit as st
-load_dotenv()
+import os
+
 
 @st.cache_resource
 def load_model(model_name="google_genai:gemini-2.5-flash-lite"):
-    model = init_chat_model(model=model_name)
-
+    api_key = os.getenv("GOOGLE_API_KEY")
+    model = ChatGoogleGenerativeAI(
+        model=model_name,
+        google_api_key=api_key
+           )
     return model
 
 @st.cache_resource
 def load_embedding_model(model_name="models/gemini-embedding-001"):
-
-    embedding_model = GoogleGenerativeAIEmbeddings(model=model_name)
+    api_key = os.getenv("GOOGLE_API_KEY")
+    embedding_model = GoogleGenerativeAIEmbeddings(model=model_name,google_api_key=api_key)
 
     return embedding_model
 
