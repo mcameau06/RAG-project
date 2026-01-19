@@ -1,9 +1,6 @@
-from chromadb.api.types import Document
-from langchain.chat_models import init_chat_model
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage, SystemMessage,AIMessage
 from langchain_google_genai import GoogleGenerativeAIEmbeddings,ChatGoogleGenerativeAI
-#from langchain_ollama import OllamaEmbeddings,ChatOllama
 from langchain_chroma import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader
@@ -12,7 +9,7 @@ from langchain_community.document_loaders import ArxivLoader
 from tempfile import NamedTemporaryFile
 import streamlit as st
 import os
-
+import re
 load_dotenv()
 @st.cache_resource
 def load_model(model_name="gemini-2.5-flash-lite"):
@@ -85,10 +82,16 @@ def chunk_documents(documents):
 
     return all_splits
 
-def create_vector_db(collection_name,chunks, embedding_model,persist_directory="./chroma_langchain_db"):
+
+
+
+
+def create_vector_db(collection_name,chunks, embedding_model):
+
+    sanitized_collection_name = sanitize_collection_name(collection_name)
 
     vector_store = Chroma(
-    collection_name=collection_name,
+    collection_name=sanitized_collection_name,
     embedding_function=embedding_model,
     collection_metadata={"hnsw:space":"cosine"}
     )
@@ -100,7 +103,24 @@ def create_vector_db(collection_name,chunks, embedding_model,persist_directory="
     print(document_ids[:3])
 
     return vector_store
+
+
+def sanitize_collection_name(name:str) -> str:
+    """ Ensures that the collection name is alphanumeric"""
+
+    name = name.replace(" ", "_")
+    name = name.strip('._-')
+
+    if len(name) < 3:
+        name = f"doc_{name}" if name else "collection"
     
+    if len(name) > 512:
+        name = name[:512]
+        name = name.strip('._-')
+
+    return name
+
+
 def delete_vector_db(vector_store):
     try:
        
